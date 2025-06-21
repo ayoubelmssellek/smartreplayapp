@@ -74,7 +74,7 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
         },
         body: JSON.stringify({
           model: "command",
-prompt: `You are a helpful assistant that understands multiple languages including Moroccan Arabic (Darija), Modern Standard Arabic, and English. Below is a conversation. Your task is to read the full conversation and provide the best response to the last message. Make sure your reply is in the same language as the conversation.\n\nConversation:\n${inputText.trim()}\n\nYour response:`,
+          prompt: `You are a smart assistant that understands Moroccan Arabic (Darija). The user message is: "${inputText.trim()}". Please provide 3 appropriate responses in English.`,
           max_tokens: 300,
           temperature: 0.7,
         }),
