@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { Upload, Type, X, Camera } from "lucide-react";
 import Tesseract from "tesseract.js";
 
-const COHERE_API_KEY = import.meta.env.VITE_COHERE_API_KEY;
+const COHERE_API_KEY = "gjQTPpDNWOpnFd6v8Rv2kJ3ikynBdfrqCJVbEGTH";
 
 const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage }) => {
   const fileInputRef = useRef(null);
