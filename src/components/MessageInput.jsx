@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { Upload, Type, X, Camera } from "lucide-react";
 import Tesseract from "tesseract.js";
 
-const COHERE_API_KEY = "AIzaSyA1GaUoHBijKv3DYRejSCjuFghy62Uypis";
+const GEMINI_API_KEY = "AIzaSyA1GaUoHBijKv3DYRejSCjuFghy62Uypis"; // Replace this
 
 const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage }) => {
   const fileInputRef = useRef(null);
@@ -14,15 +14,14 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
+    setDragActive(e.type === "dragenter" || e.type === "dragover");
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   };
 
   const handleFile = (file) => {
@@ -32,7 +31,6 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
         const imageDataUrl = e.target?.result;
         setUploadedImage(imageDataUrl);
         setInputMethod("image");
-
         try {
           const result = await Tesseract.recognize(imageDataUrl, "eng");
           const extractedText = result.data.text.trim();
@@ -47,7 +45,7 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
   };
 
   const handleFileInput = (e) => {
-    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+    if (e.target.files[0]) handleFile(e.target.files[0]);
   };
 
   const removeImage = () => {
@@ -65,31 +63,36 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
     setReply("");
 
     try {
-      const response = await fetch("https://api.cohere.ai/generate", {
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${COHERE_API_KEY}`,
+          "X-goog-api-key": GEMINI_API_KEY,
         },
         body: JSON.stringify({
-          model: "command",
-          prompt: `You are a smart assistant that understands Moroccan Arabic (Darija). The user message is: "${inputText.trim()}". Please provide 3 appropriate responses in English.`,
-          max_tokens: 300,
-          temperature: 0.7,
+          contents: [
+            {
+              parts: [
+                {
+                  text: `You are a smart, casual assistant. Reply to the user's message below with one short, friendly answer — just like a human in a real conversation. Do not explain anything. Match the language the user used.
+
+User: "${inputText.trim()}"
+Assistant:`,
+                },
+              ],
+            },
+          ],
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "طلب غير ناجح");
-      }
-
       const data = await response.json();
-      if (!data.text) throw new Error("لا توجد ردود من API");
 
-      setReply(data.text.trim());
+      const finalText =
+        data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "📛 وقع مشكل مع الخدمة، جرب من بعد.";
+
+      setReply(finalText);
     } catch (error) {
-      console.error("Cohere API Error:", error.message);
+      console.error("Gemini API Error:", error);
       setReply("📛 وقع مشكل مع الخدمة، جرب من بعد.");
     } finally {
       setLoading(false);
@@ -101,10 +104,20 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">شنو هي الرسالة اللي بغيتي ترد عليها؟</h2>
 
       <div className="flex gap-2 mb-6 justify-center">
-        <button onClick={() => setInputMethod("text")} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${inputMethod === "text" ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-600"}`}>
+        <button
+          onClick={() => setInputMethod("text")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
+            inputMethod === "text" ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-600"
+          }`}
+        >
           <Type className="w-4 h-4" /> كتابة النص
         </button>
-        <button onClick={() => setInputMethod("image")} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${inputMethod === "image" ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-600"}`}>
+        <button
+          onClick={() => setInputMethod("image")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
+            inputMethod === "image" ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-600"
+          }`}
+        >
           <Camera className="w-4 h-4" /> رفع صورة
         </button>
       </div>
@@ -126,7 +139,9 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
         <div className="mb-6">
           {!uploadedImage ? (
             <div
-              className={`border-2 border-dashed rounded-xl p-8 text-center ${dragActive ? "border-emerald-500 bg-emerald-50" : "border-gray-300"}`}
+              className={`border-2 border-dashed rounded-xl p-8 text-center ${
+                dragActive ? "border-emerald-500 bg-emerald-50" : "border-gray-300"
+              }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -173,15 +188,17 @@ const MessageInput = ({ inputText, setInputText, uploadedImage, setUploadedImage
         <button
           onClick={onAnalyze}
           disabled={!canAnalyze || loading}
-          className={`px-8 py-3 rounded-xl font-semibold ${canAnalyze && !loading ? "bg-gradient-to-r from-emerald-500 to-red-500 text-white" : "bg-gray-200 text-gray-400"}`}
+          className={`px-8 py-3 rounded-xl font-semibold ${
+            canAnalyze && !loading ? "bg-gradient-to-r from-emerald-500 to-red-500 text-white" : "bg-gray-200 text-gray-400"
+          }`}
         >
-          {loading ? "كنحلل الرسالة..." : "حلل الرسالة وعطيني ردود 🤖"}
+          {loading ? "كنحلل الرسالة..." : "حلل الرسالة وعطيني رد 🤖"}
         </button>
       </div>
 
       {reply && (
         <div className="mt-6 p-4 bg-gray-50 border rounded-xl text-right whitespace-pre-line">
-          <h3 className="font-bold mb-2 text-emerald-700">✅ الردود المقترحة:</h3>
+          <h3 className="font-bold mb-2 text-emerald-700">✅ الرد المقترح:</h3>
           <pre className="whitespace-pre-wrap">{reply}</pre>
         </div>
       )}
